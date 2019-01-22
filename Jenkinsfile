@@ -4,11 +4,32 @@ pipeline {
     stage('Build') {
       steps {
         sh '''
-                    echo "PATH = ${PATH}"
-                    echo "M2_HOME = ${M2_HOME}"
-                    mvn -B install '''
+            echo "PATH = ${PATH}"
+            echo "M2_HOME = ${M2_HOME}"
+            mvn -B install '''
       }
     }
+    stage ('Creating build tag') {
+      steps {
+            createTag nexusInstanceId: 'nx3', tagAttributesJson: '{"createdBy" : "Moose"}', tagName: 'build-125'
+        }
+    }
+    stage ('Publishing') {
+        steps {
+            nexusPublisher nexusInstanceId: 'nx3', nexusRepositoryId: 'maven-releases', packages: [[$class: 'MavenPackage', mavenAssetList: [[classifier: '', extension: '', filePath: 'webgoat-container/target/webgoat-container-8.0.0.M3.jar']], mavenCoordinate: [artifactId: 'fancyWidget', groupId: 'com.mycompany', packaging: 'jar', version: '1.1']]], tagName: 'build-125'
+        }
+    }
+    stage ('Move') {
+        steps {
+            moveComponents destination: 'maven-test', nexusInstanceId: 'nx3', tagName: 'build-123'
+        }
+    }
+    stage ('Delete') {
+        steps {
+            deleteComponents nexusInstanceId: 'nx3', tagName: 'build-120'
+        }
+    } 
+
     stage('Scan App - Build Container') {
       parallel {
         stage('IQ-BOM') {
